@@ -10,16 +10,6 @@ app.use(cors());
 
 const repositories = [];
 
-function ValidateRepositoryID (request,response,next) {
-    const {id} = request.params;
-
-    if(!isUuid(id)) {
-      return response.status(404).json({error: 'Erro de permissão!'});
-    }
-
-    return next();
-}
-
 app.get("/repositories", (request, response) => {
   return response.json(repositories);
 });
@@ -28,11 +18,11 @@ app.post("/repositories", (request, response) => {
   const {title,url,techs} = request.body;
 
   const repository  = {
-    id,
+    id : uuid(),
     title, 
     url,
     techs,
-    likes: 0     
+    likes: 0    
   }
 
   repositories.push(repository);
@@ -40,11 +30,15 @@ app.post("/repositories", (request, response) => {
   return response.json(repository);
 });
 
-app.put("/repositories/:id", ValidateRepositoryID, (request, response) => {
+app.put("/repositories/:id", (request, response) => {
    const {id} = request.params;
    const {title,url,techs} = request.body;
 
-   const {repositoryIndex} = repository.findIndex(repository => repository.id == id);
+   const repositoryIndex = repositories.findIndex(repository => repository.id == id);
+
+   if(!repositoryIndex) {
+     return response.status(400).json({error:"Erro de autenticação!"});
+   }
 
    if(repositoryIndex < 0) {
      return response.status(400).json({erro: 'Erro de autenticação!'});
@@ -54,7 +48,8 @@ app.put("/repositories/:id", ValidateRepositoryID, (request, response) => {
      id,
      title,
      url,
-     techs
+     techs,
+     likes : repositories[repositoryIndex].likes
    }
 
    repositories[repositoryIndex] = repository;
@@ -63,17 +58,17 @@ app.put("/repositories/:id", ValidateRepositoryID, (request, response) => {
 
 });
 
-app.delete("/repositories/:id", ValidateRepositoryID, (request, response) => {
+app.delete("/repositories/:id", (request, response) => {
   const {id} = request.params;
 
-  const repositoryIndex = repository.findIndex(repository => repository.id == id);
+  const repositoryIndex = repositories.findIndex(repository => repository.id == id);
 
   if(!repositoryIndex) {
-    return response.status(400).send();
+    return response.status(400).json({error:"Erro de autenticação!"});
   }
 
   if(repositoryIndex < 0) {
-    return response.status(204).json({error: 'Erro de autenticação!'});
+    return response.status(400).json({error: 'Erro de autenticação!'});
   }
 
   repositories.splice(repositoryIndex,1);
@@ -81,7 +76,7 @@ app.delete("/repositories/:id", ValidateRepositoryID, (request, response) => {
   return response.status(204).send();
 });
 
-app.post("/repositories/:id/like", ValidateRepositoryID, (request, response) => {
+app.post("/repositories/:id/like", (request, response) => {
   const {id} = request.params;
 
   const repository = repositories.find(repository => repository.id == id);
